@@ -56,7 +56,7 @@ class Models:
     def simple(self):
         # simple CNN
         self.model = Sequential()
-        self.model.add(BatchNormalization(input_shape=(75, 75, 2)))
+        self.model.add(BatchNormalization(input_shape=self.input_shape))
         for i in range(4):
             self.model.add(Conv2D(8 * 2 ** i, kernel_size=(3, 3)))
             self.model.add(MaxPooling2D((2, 2)))
