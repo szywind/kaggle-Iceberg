@@ -186,9 +186,10 @@ class Iceberg:
 
         # training
         # self.model.fit(X_train, y_train,
-        #                validation_data = (X_test, y_test),
+        #                validation_split=0.2,
+        #                # validation_data = (X_val, y_val),
         #                epochs = self.max_epochs,
-        #                verbose=1,
+        #                verbose=2,
         #                shuffle = True,
         #                callbacks=callbacks)
     def test(self):
