@@ -4,6 +4,8 @@ from keras.applications.vgg19 import VGG19
 from keras.applications.resnet50 import ResNet50
 from keras.applications.inception_v3 import InceptionV3
 from keras.applications.xception import Xception
+from keras.regularizers import L1L2
+
 from keras.layers import Flatten, Dense, GlobalAveragePooling2D, BatchNormalization, Conv2D, MaxPooling2D, \
     GlobalMaxPooling2D, Dropout
 
@@ -56,9 +58,9 @@ class Models:
     def simple(self):
         # simple CNN
         self.model = Sequential()
-        self.model.add(BatchNormalization(input_shape=(75, 75, 2)))
+        self.model.add(BatchNormalization(input_shape=self.input_shape))
         for i in range(4):
-            self.model.add(Conv2D(8 * 2 ** i, kernel_size=(3, 3)))
+            self.model.add(Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same', activation='relu'))
             self.model.add(MaxPooling2D((2, 2)))
         self.model.add(GlobalMaxPooling2D())
         self.model.add(Dropout(0.5))

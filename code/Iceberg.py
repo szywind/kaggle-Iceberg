@@ -49,14 +49,14 @@ class Iceberg:
                                              save_best_only=True,
                                              save_weights_only=True),
                              ReduceLROnPlateau(factor=0.5,
-                                               patience=2,
+                                               patience=4,
                                                verbose=1,
                                                epsilon=1e-4),
                              EarlyStopping(min_delta=1e-4,
-                                           patience=4,
+                                           patience=10,
                                            verbose=1)]
 
-        models = Models(input_shape=(self.height, self.width, 3), classes=self.num_classes)
+        models = Models(input_shape=(self.height, self.width, X_train.shape[-1]), classes=self.num_classes)
         if self.base_model == 'vgg16':
             models.vgg16()
         elif self.base_model == 'vgg19':
@@ -83,6 +83,8 @@ class Iceberg:
         print("# validation images: ", nVal)
 
         train_datagen = ImageDataGenerator(
+            zca_whitening=True,
+            zoom_range=[1, 1.2],
             horizontal_flip=True,
             vertical_flip=True
         )
@@ -185,9 +187,10 @@ class Iceberg:
 
         # training
         # self.model.fit(X_train, y_train,
-        #                validation_data = (X_test, y_test),
+        #                validation_split=0.2,
+        #                # validation_data = (X_val, y_val),
         #                epochs = self.max_epochs,
-        #                verbose=1,
+        #                verbose=2,
         #                shuffle = True,
         #                callbacks=callbacks)
     def test(self):
@@ -203,7 +206,7 @@ class Iceberg:
 
 
 if __name__ == '__main__':
-    iceberg = Iceberg()
+    iceberg = Iceberg(base_model='simple')
     iceberg.train()
     iceberg.test()
 
