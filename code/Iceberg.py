@@ -84,6 +84,7 @@ class Iceberg:
 
         train_datagen = ImageDataGenerator(
             zca_whitening=True,
+            zoom_range=[1, 1.2],
             horizontal_flip=True,
             vertical_flip=True
         )
