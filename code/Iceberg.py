@@ -49,11 +49,11 @@ class Iceberg:
                                              save_best_only=True,
                                              save_weights_only=True),
                              ReduceLROnPlateau(factor=0.5,
-                                               patience=2,
+                                               patience=4,
                                                verbose=1,
                                                epsilon=1e-4),
                              EarlyStopping(min_delta=1e-4,
-                                           patience=4,
+                                           patience=10,
                                            verbose=1)]
 
         models = Models(input_shape=(self.height, self.width, X_train.shape[-1]), classes=self.num_classes)
