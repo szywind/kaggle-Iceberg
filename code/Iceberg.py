@@ -6,12 +6,13 @@ from keras.utils.np_utils import to_categorical
 from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 from keras.optimizers import RMSprop, Adam
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
+from sklearn.model_selection import KFold, StratifiedKFold
 
 from models import Models
-
+from helpers import transformations
 
 class Iceberg:
-    def __init__(self, height=75, width=75, batch_size=32, max_epochs=100, base_model='simple', num_classes=2):
+    def __init__(self, height=75, width=75, batch_size=32, max_epochs=500, base_model='simple', num_classes=2):
         self.height = height
         self.width = width
         self.batch_size = batch_size
@@ -19,6 +20,7 @@ class Iceberg:
         self.base_model = base_model
         self.num_classes = num_classes
         self.load_data()
+        self.num_folds = 5
 
     def load_data(self):
         def load_and_format(in_path):
@@ -97,6 +99,9 @@ class Iceberg:
                     end = min(start + self.batch_size, nTrain)
 
                     for i in range(start, end):
+                        # x = train_datagen.random_transform(X_train[i])
+                        # x = transformations(x, np.random.randint(3))
+                        # x_batch.append(x)
                         x_batch.append(train_datagen.random_transform(X_train[i]))
                         y_batch.append(y_train[i])
 
@@ -205,11 +210,177 @@ class Iceberg:
 
 
 
+    def train_ensemble(self):  # split the train dataset 50%-50% (train-validation)
+        train_labels = to_categorical(self.train_df['is_iceberg'])
+        print(train_labels[:100, 1])
+
+        # kf = KFold(len(self.train_images), n_folds=self.num_folds, shuffle=True, random_state=1)
+        # kf = StratifiedKFold(train_labels, n_folds=self.num_folds, shuffle=True, random_state=1)
+        kf = StratifiedKFold(n_splits=self.num_folds, shuffle=True, random_state=1)
+
+        fold_id = 0
+        for train_index, val_index in kf.split(self.train_images, train_labels[:,1]):
+            X_train = self.train_images[train_index]
+            X_val = self.train_images[val_index]
+            y_train = train_labels[train_index]
+            y_val = train_labels[val_index]
+
+            kfold_weights_path = '../weights/best_weights_{}_{}.hdf5'.format(self.base_model, fold_id)
+            fold_id += 1
+
+            print('Train', X_train.shape, y_train.shape)
+            print('Validation', X_val.shape, y_val.shape)
+
+
+            callbacks = [ModelCheckpoint(filepath=kfold_weights_path,
+                                                 save_best_only=True,
+                                                 save_weights_only=True),
+                                 ReduceLROnPlateau(factor=0.5,
+                                                   patience=4,
+                                                   verbose=1,
+                                                   epsilon=1e-4),
+                                 EarlyStopping(min_delta=1e-4,
+                                               patience=10,
+                                               verbose=1)]
+
+            models = Models(input_shape=(self.height, self.width, X_train.shape[-1]), classes=self.num_classes)
+            if self.base_model == 'vgg16':
+                models.vgg16()
+            elif self.base_model == 'vgg19':
+                models.vgg19()
+            elif self.base_model == 'resnet50':
+                models.resnet50()
+            elif self.base_model == 'inceptionV3':
+                models.inceptionV3()
+            elif self.base_model == 'simple':
+                models.simple()
+            else:
+                print('Uknown base model')
+                raise SystemExit
+
+            # models.compile(optimizer=RMSprop(lr=1e-5))
+
+            models.compile(optimizer=Adam())
+
+            self.model = models.get_model()
+
+            nTrain = len(X_train)
+            nVal = len(X_val)
+            print("# training images: ", nTrain)
+            print("# validation images: ", nVal)
+
+            train_datagen = ImageDataGenerator(
+                zca_whitening=True,
+                zoom_range=[1, 1.2],
+                rotation_range=360,
+                horizontal_flip=True,
+                vertical_flip=True
+            )
+
+            def train_generator():
+                while True:
+                    for start in range(0, nTrain, self.batch_size):
+                        x_batch = []
+                        y_batch = []
+                        end = min(start + self.batch_size, nTrain)
+
+                        for i in range(start, end):
+                            # x = train_datagen.random_transform(X_train[i])
+                            # x = transformations(x, np.random.randint(3))
+                            # x_batch.append(x)
+                            x_batch.append(train_datagen.random_transform(X_train[i]))
+                            y_batch.append(y_train[i])
+
+                        # for id in ids_train_batch.values:
+                        #     # j = np.random.randint(self.nAug)
+                        #     img = cv2.imread(INPUT_PATH + 'train_hq/{}.jpg'.format(id))
+                        #     img = cv2.resize(img, (self.input_width, self.input_height), interpolation=cv2.INTER_LINEAR)
+                        #     # img = transformations2(img, j)
+                        #     mask = np.array(Image.open(INPUT_PATH + 'train_masks_fixed/{}_mask.gif'.format(id)), dtype=np.uint8)
+                        #     mask = cv2.resize(mask, (self.input_width, self.input_height), interpolation=cv2.INTER_LINEAR)
+                        #     # mask = transformations2(mask, j)
+                        #     img = randomHueSaturationValue(img,
+                        #                                    hue_shift_limit=(-50, 50),
+                        #                                    sat_shift_limit=(-5, 5),
+                        #                                    val_shift_limit=(-15, 15))
+                        #     img, mask = randomShiftScaleRotate(img, mask,
+                        #                                        shift_limit=(-0.0625, 0.0625),
+                        #                                        scale_limit=(-0.1, 0.1),
+                        #                                        rotate_limit=(-0, 0))
+                        #     img, mask = randomHorizontalFlip(img, mask)
+                        #     if self.factor != 1:
+                        #         img = cv2.resize(img, (self.input_dim//self.factor, self.input_dim//self.factor), interpolation=cv2.INTER_LINEAR)
+                        #     # draw(img, mask)
+                        #
+                        #     if self.direct_result:
+                        #         mask = np.expand_dims(mask, axis=2)
+                        #         x_batch.append(img)
+                        #         y_batch.append(mask)
+                        #     else:
+                        #         target = np.zeros((mask.shape[0], mask.shape[1], self.nb_classes))
+                        #         for k in range(self.nb_classes):
+                        #             target[:,:,k] = (mask == k)
+                        #         x_batch.append(img)
+                        #         y_batch.append(target)
+                        #
+                        # x_batch = np.array(x_batch, np.float32) / 255.0
+                        # y_batch = np.array(y_batch, np.float32)
+                        x_batch = np.array(x_batch, np.float32)
+                        y_batch = np.array(y_batch, np.float32)
+                        yield x_batch, y_batch
+
+            val_datagen = ImageDataGenerator(
+                zca_whitening=True
+            )
+            def val_generator():
+                while True:
+                    for start in range(0, nVal, self.batch_size):
+                        x_batch = []
+                        y_batch = []
+                        end = min(start + self.batch_size, nVal)
+
+                        for i in range(start, end):
+                            x_batch.append(val_datagen.random_transform(X_val[i]))
+                            y_batch.append(y_val[i])
+                        x_batch = np.array(x_batch, np.float32)
+                        y_batch = np.array(y_batch, np.float32)
+                        yield x_batch, y_batch
+
+            self.model.fit_generator(
+                generator=train_generator(),
+                steps_per_epoch=np.ceil(nTrain / float(self.batch_size)),
+                epochs=self.max_epochs,
+                verbose=2,
+                validation_data=val_generator(),
+                validation_steps=np.ceil(nVal / float(self.batch_size)),
+                callbacks=callbacks
+            )
+
+
+    def test_ensemble(self):
+        preds = 0
+        for fold_id in range(self.num_folds):
+            kfold_weights_path = '../weights/best_weights_{}_{}.hdf5'.format(self.base_model, fold_id)
+            self.model.load_weights(kfold_weights_path)
+            # make predictions
+            test_predictions = self.model.predict(self.test_images)
+
+            preds += test_predictions[:,1] / float(self.num_folds)
+
+        # save the predictions csv file
+        pred_df = self.test_df[['id']].copy()
+        pred_df['is_iceberg'] = preds
+        pred_df.to_csv('../submit/predictions_ensemble.csv', index = False)
+
+
+
 if __name__ == '__main__':
     iceberg = Iceberg(base_model='simple')
+    # iceberg.train_ensemble()
+    # iceberg.test_ensemble()
+
     iceberg.train()
     iceberg.test()
-
 
 
 
