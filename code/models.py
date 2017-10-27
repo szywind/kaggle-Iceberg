@@ -7,7 +7,9 @@ from keras.applications.xception import Xception
 from keras.regularizers import L1L2
 
 from keras.layers import Flatten, Dense, GlobalAveragePooling2D, BatchNormalization, Conv2D, MaxPooling2D, \
-    GlobalMaxPooling2D, Dropout
+    GlobalMaxPooling2D, Dropout, Input, Activation
+from keras.layers.merge import add
+from keras.models import Model
 
 
 class Models:
@@ -17,8 +19,12 @@ class Models:
         self.model = Sequential()
 
     def vgg16(self):
+        if not self.input_shape[-1] == 3:
+            self.model = Sequential()
+            self.model.add(BatchNormalization(input_shape=self.input_shape))
+            self.model.add(Conv2D(3, kernel_size=(1,1), padding='same'))
         base_model = VGG16(include_top=False, weights='imagenet',
-                           input_shape=self.input_shape)
+                           input_shape=[self.input_shape[0],self.input_shape[1],3])
 
         self.model.add(base_model)
         self.model.add(Flatten())
@@ -60,12 +66,29 @@ class Models:
         self.model = Sequential()
         self.model.add(BatchNormalization(input_shape=self.input_shape))
         for i in range(4):
-            self.model.add(Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same', activation='relu'))
-            self.model.add(MaxPooling2D((2, 2)))
+            self.model.add(Conv2D(16 * 2 ** i, kernel_size=(3, 3), padding='same', activation='relu'))
+            if i < 4:
+                self.model.add(MaxPooling2D((2, 2)))
         self.model.add(GlobalMaxPooling2D())
         self.model.add(Dropout(0.5))
-        self.model.add(Dense(8))
+        self.model.add(Dense(16))
         self.model.add(Dense(2, activation='softmax'))
+
+    def simple_resnet(self):
+        inputs = Input(shape=self.input_shape)
+        x = BatchNormalization()(inputs)
+        for i in range(4):
+            x = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same')(x)
+            z = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same', activation='relu')(x)
+            z = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same')(z)
+            z = add([x, z])
+            z = Activation('relu')(z)
+            x = MaxPooling2D((2,2))(z)
+        x = GlobalMaxPooling2D()(x)
+        x = Dropout(0.5)(x)
+        x = Dense(8)(x)
+        x = Dense(2, activation='softmax')(x)
+        self.model = Model(inputs=inputs, outputs=x)
 
     def compile(self, optimizer):
         print(self.model.summary())
