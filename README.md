@@ -19,3 +19,12 @@ Epoch 50/500
 0s - loss: 0.1531 - acc: 0.9352 - val_loss: 0.2329 - val_acc: 0.9003
 ```
 - public LB is 0.1901
+
+10.28 (v0.2)
+
+- add shear augmentation
+```
+Epoch 50/500
+0s - loss: 0.1669 - acc: 0.9390 - val_loss: 0.2052 - val_acc: 0.9159
+```
+- public LB is 0.1855
