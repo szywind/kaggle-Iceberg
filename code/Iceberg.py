@@ -40,7 +40,7 @@ class Iceberg:
     def train(self):  # split the train dataset 50%-50% (train-validation)
         X_train, X_val, y_train, y_val = train_test_split(self.train_images,
                                                             to_categorical(self.train_df['is_iceberg']),
-                                                            random_state=2017,
+                                                            random_state=1,
                                                             test_size=0.2
                                                             )
         print('Train', X_train.shape, y_train.shape)
@@ -272,8 +272,8 @@ class Iceberg:
 
             train_datagen = ImageDataGenerator(
                 zca_whitening=True,
+                shear_range=0.2,
                 zoom_range=[1, 1.2],
-                rotation_range=360,
                 horizontal_flip=True,
                 vertical_flip=True
             )
