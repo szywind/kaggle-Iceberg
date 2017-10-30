@@ -28,3 +28,11 @@ Epoch 50/500
 0s - loss: 0.1669 - acc: 0.9390 - val_loss: 0.2052 - val_acc: 0.9159
 ```
 - public LB is 0.1855
+
+10.29 (v0.3)
+- modify random seed from 2017 to 1 and train again
+```
+Epoch 22/500
+0s - loss: 0.2706 - acc: 0.8803 - val_loss: 0.2061 - val_acc: 0.9128
+```
+- public LB is 0.1739
