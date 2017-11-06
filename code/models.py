@@ -11,6 +11,7 @@ from keras.layers import Flatten, Dense, GlobalAveragePooling2D, BatchNormalizat
 from keras.layers.merge import add
 from keras.models import Model
 
+from loss import focus_loss
 
 class Models:
     def __init__(self, input_shape, classes):
@@ -77,22 +78,26 @@ class Models:
     def simple_resnet(self):
         inputs = Input(shape=self.input_shape)
         x = BatchNormalization()(inputs)
-        for i in range(4):
+        for i in range(3):
             x = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same')(x)
-            z = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same', activation='relu')(x)
+            x = BatchNormalization()(x)
+            x = Activation(activation='relu')(x)
+            z = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same')(x)
+            z = BatchNormalization()(z)
+            z = Activation(activation='relu')(z)
             z = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same')(z)
+            z = BatchNormalization()(z)
             z = add([x, z])
             z = Activation('relu')(z)
             x = MaxPooling2D((2,2))(z)
-        x = GlobalMaxPooling2D()(x)
+        x = Flatten()(x)
         x = Dropout(0.5)(x)
-        x = Dense(8)(x)
         x = Dense(2, activation='softmax')(x)
         self.model = Model(inputs=inputs, outputs=x)
 
     def compile(self, optimizer):
         print(self.model.summary())
-        self.model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics = ['accuracy'])
+        self.model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics = ['accuracy', focus_loss])
 
     def load_weights(self, path):
         self.model.load_weights(path)

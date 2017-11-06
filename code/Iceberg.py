@@ -9,10 +9,12 @@ from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_a
 from sklearn.model_selection import KFold, StratifiedKFold
 
 from models import Models
-from helpers import transformations
+from helpers import transformations, flip, random_crop, expand_chan
+
+flag_expand_chan = True
 
 class Iceberg:
-    def __init__(self, height=75, width=75, batch_size=32, max_epochs=500, base_model='simple', num_classes=2):
+    def __init__(self, height=70, width=70, batch_size=64, max_epochs=500, base_model='simple', num_classes=2):
         self.height = height
         self.width = width
         self.batch_size = batch_size
@@ -21,6 +23,8 @@ class Iceberg:
         self.num_classes = num_classes
         self.load_data()
         self.num_folds = 5
+
+        self.define_model(self.test_images.shape[-1])
 
     def load_data(self):
         def load_and_format(in_path):
@@ -36,11 +40,33 @@ class Iceberg:
         print('testing', self.test_df.shape, 'loaded', self.test_images.shape)
 
 
+    def define_model(self, num_chan):
+        models = Models(input_shape=(self.height, self.width, num_chan + 1*flag_expand_chan),
+                        classes=self.num_classes)
+        if self.base_model == 'vgg16':
+            models.vgg16()
+        elif self.base_model == 'vgg19':
+            models.vgg19()
+        elif self.base_model == 'resnet50':
+            models.resnet50()
+        elif self.base_model == 'inceptionV3':
+            models.inceptionV3()
+        elif self.base_model == 'simple':
+            models.simple()  # TODO
+        else:
+            print('Uknown base model')
+            raise SystemExit
+
+        # models.compile(optimizer=RMSprop(lr=1e-3))
+
+        models.compile(optimizer=Adam())
+
+        self.model = models.get_model()
 
     def train(self):  # split the train dataset 50%-50% (train-validation)
         X_train, X_val, y_train, y_val = train_test_split(self.train_images,
                                                             to_categorical(self.train_df['is_iceberg']),
-                                                            random_state=1,
+                                                            random_state=2017,
                                                             test_size=0.2
                                                             )
         print('Train', X_train.shape, y_train.shape)
@@ -51,33 +77,14 @@ class Iceberg:
                                              save_best_only=True,
                                              save_weights_only=True),
                              ReduceLROnPlateau(factor=0.5,
-                                               patience=4,
+                                               patience=8,
                                                verbose=1,
                                                epsilon=1e-4),
                              EarlyStopping(min_delta=1e-4,
-                                           patience=10,
+                                           patience=15,
                                            verbose=1)]
 
-        models = Models(input_shape=(self.height, self.width, X_train.shape[-1]), classes=self.num_classes)
-        if self.base_model == 'vgg16':
-            models.vgg16()
-        elif self.base_model == 'vgg19':
-            models.vgg19()
-        elif self.base_model == 'resnet50':
-            models.resnet50()
-        elif self.base_model == 'inceptionV3':
-            models.inceptionV3()
-        elif self.base_model == 'simple':
-            models.simple()
-        else:
-            print('Uknown base model')
-            raise SystemExit
 
-        # models.compile(optimizer=RMSprop(lr=1e-5))
-
-        models.compile(optimizer=Adam())
-
-        self.model = models.get_model()
 
         nTrain = len(X_train)
         nVal = len(X_val)
@@ -100,10 +107,14 @@ class Iceberg:
                     end = min(start + self.batch_size, nTrain)
 
                     for i in range(start, end):
-                        # x = train_datagen.random_transform(X_train[i])
+                        x = X_train[i]
+                        if flag_expand_chan:
+                            x = expand_chan(x)
+                        x = train_datagen.random_transform(x)
                         # x = transformations(x, np.random.randint(3))
-                        # x_batch.append(x)
-                        x_batch.append(train_datagen.random_transform(X_train[i]))
+                        x = random_crop(x, (self.height, self.width))
+                        x_batch.append(x)
+                        # x_batch.append(train_datagen.random_transform(X_train[i]))
                         y_batch.append(y_train[i])
 
                     # for id in ids_train_batch.values:
@@ -167,7 +178,12 @@ class Iceberg:
                     end = min(start + self.batch_size, nVal)
 
                     for i in range(start, end):
-                        x_batch.append(val_datagen.random_transform(X_val[i]))
+                        x = X_val[i]
+                        if flag_expand_chan:
+                            x = expand_chan(x)
+                        x = val_datagen.random_transform(x)
+                        x = random_crop(x, (self.height, self.width), center=True)
+                        x_batch.append(x)
                         y_batch.append(y_val[i])
                     x_batch = np.array(x_batch, np.float32)
                     y_batch = np.array(y_batch, np.float32)
@@ -183,11 +199,11 @@ class Iceberg:
 
         self.model.fit_generator(
             generator=train_generator(),
-            steps_per_epoch=np.ceil(nTrain / float(self.batch_size)),
+            steps_per_epoch=5*np.ceil(nTrain / float(self.batch_size)),
             epochs=self.max_epochs,
             verbose=2,
             validation_data=val_generator(),
-            validation_steps=np.ceil(nVal / float(self.batch_size)),
+            validation_steps=5*np.ceil(nVal / float(self.batch_size)),
             callbacks=callbacks
         )
 
@@ -200,9 +216,25 @@ class Iceberg:
         #                shuffle = True,
         #                callbacks=callbacks)
     def test(self):
-        self.model.load_weights('../weights/best_weights_{}.hdf5'.format(self.base_model))
         # make predictions
-        test_predictions = self.model.predict(self.test_images)
+        test_array_shape = self.test_images.shape # (8424, 75, 75, 2)
+        aug_test_images = np.random.randn(test_array_shape[0], self.height, self.width, test_array_shape[-1] + flag_expand_chan)
+
+        self.model.load_weights('../weights/best_weights_{}.hdf5'.format(self.base_model))
+
+        nTest = len(self.test_images)
+        K = 5
+        print("# test images: ", nTest)
+        test_predictions = 0
+        for k in range(K):
+            for i in range(nTest):
+                x = self.test_images[i]
+                if flag_expand_chan:
+                    x = expand_chan(x)
+                aug_test_images[i] = random_crop(x, (self.height, self.width))
+                # test_predictions = self.model.predict(self.test_images)
+            test_predictions += self.model.predict(aug_test_images) / float(K)
+
 
         # save the predictions csv file
         pred_df = self.test_df[['id']].copy()
@@ -244,27 +276,6 @@ class Iceberg:
                                                patience=10,
                                                verbose=1)]
 
-            models = Models(input_shape=(self.height, self.width, X_train.shape[-1]), classes=self.num_classes)
-            if self.base_model == 'vgg16':
-                models.vgg16()
-            elif self.base_model == 'vgg19':
-                models.vgg19()
-            elif self.base_model == 'resnet50':
-                models.resnet50()
-            elif self.base_model == 'inceptionV3':
-                models.inceptionV3()
-            elif self.base_model == 'simple':
-                models.simple()
-            else:
-                print('Uknown base model')
-                raise SystemExit
-
-            # models.compile(optimizer=RMSprop(lr=1e-5))
-
-            models.compile(optimizer=Adam())
-
-            self.model = models.get_model()
-
             nTrain = len(X_train)
             nVal = len(X_val)
             print("# training images: ", nTrain)
@@ -286,10 +297,14 @@ class Iceberg:
                         end = min(start + self.batch_size, nTrain)
 
                         for i in range(start, end):
-                            # x = train_datagen.random_transform(X_train[i])
+                            x = X_train[i]
+                            if flag_expand_chan:
+                                x = expand_chan(x)
+                            x = train_datagen.random_transform(x)
+                            x = random_crop(x, (self.height, self.width))
                             # x = transformations(x, np.random.randint(3))
-                            # x_batch.append(x)
-                            x_batch.append(train_datagen.random_transform(X_train[i]))
+                            x_batch.append(x)
+                            # x_batch.append(train_datagen.random_transform(X_train[i]))
                             y_batch.append(y_train[i])
 
                         # for id in ids_train_batch.values:
@@ -341,7 +356,12 @@ class Iceberg:
                         end = min(start + self.batch_size, nVal)
 
                         for i in range(start, end):
-                            x_batch.append(val_datagen.random_transform(X_val[i]))
+                            x = X_val[i]
+                            if flag_expand_chan:
+                                x = expand_chan(x)
+                            x = val_datagen.random_transform(x)
+                            x = random_crop(x, (self.height, self.width), center=True)
+                            x_batch.append(x)
                             y_batch.append(y_val[i])
                         x_batch = np.array(x_batch, np.float32)
                         y_batch = np.array(y_batch, np.float32)
@@ -349,28 +369,54 @@ class Iceberg:
 
             self.model.fit_generator(
                 generator=train_generator(),
-                steps_per_epoch=np.ceil(nTrain / float(self.batch_size)),
+                steps_per_epoch=5*np.ceil(nTrain / float(self.batch_size)),
                 epochs=self.max_epochs,
                 verbose=2,
                 validation_data=val_generator(),
-                validation_steps=np.ceil(nVal / float(self.batch_size)),
+                validation_steps=5*np.ceil(nVal / float(self.batch_size)),
                 callbacks=callbacks
             )
 
 
     def test_ensemble(self):
+        test_array_shape = self.test_images.shape  # (8424, 75, 75, 2)
         preds = 0
+        nTest = len(self.test_images)
+        K = 5
+        print(self.test_images.shape)
+        print("# test images: ", nTest)
+        test_predictions = 0
         for fold_id in range(self.num_folds):
             kfold_weights_path = '../weights/best_weights_{}_{}.hdf5'.format(self.base_model, fold_id)
             self.model.load_weights(kfold_weights_path)
-            # make predictions
-            test_predictions = self.model.predict(self.test_images)
 
-            preds += test_predictions[:,1] / float(self.num_folds)
+            # make predictions with TTA
+
+            # test_predictions = self.model.predict(self.test_images)
+            # preds += test_predictions[:, 1] / float(K*self.num_folds)
+            #
+            # for k in range(K-1):
+            #     aug_test_images = self.test_images
+            #     for i in range(nTest):
+            #         aug_test_images[i] = transformations(aug_test_images[i], k)
+            #
+            #     test_predictions = self.model.predict(aug_test_images)
+            #     preds += test_predictions[:,1] / float(K*self.num_folds)
+
+
+            aug_test_images = np.random.randn(test_array_shape[0], self.height, self.width, test_array_shape[-1] + 1*flag_expand_chan)
+            for k in range(K):
+                for i in range(nTest):
+                    x = self.test_images[i]
+                    if flag_expand_chan:
+                        x = expand_chan(x)
+                    aug_test_images[i] = random_crop(x, (self.height, self.width))
+                    # test_predictions = self.model.predict(self.test_images)
+                test_predictions += self.model.predict(aug_test_images) / float(K * self.num_folds)
 
         # save the predictions csv file
         pred_df = self.test_df[['id']].copy()
-        pred_df['is_iceberg'] = preds
+        pred_df['is_iceberg'] = test_predictions[:, 1]
         pred_df.to_csv('../submit/predictions_ensemble.csv', index = False)
 
 
