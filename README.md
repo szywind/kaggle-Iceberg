@@ -32,3 +32,7 @@ Epoch 50/500
 10.29 (v0.3)
 - ensemble with cross validation
 - public LB is 0.1739
+
+11.06 (v0.4)
+- add random crop data augmentation and the 3rd dummy channel
+- public LB is 0.1787 for single model and 0.1726 for ensemble model
