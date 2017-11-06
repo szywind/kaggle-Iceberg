@@ -1,5 +1,6 @@
 import cv2, imutils
 import numpy as np
+import random
 
 def transformations(src, choice):
     if choice == 0:
@@ -11,6 +12,26 @@ def transformations(src, choice):
     if choice == 2:
         # rotate 180
         dst = cv2.rotate(src, rotateCode=cv2.ROTATE_180)
+    return dst
+
+def flip(src, flipCode):
+    return cv2.flip(src, flipCode=flipCode)
+
+def random_crop(img, dstSize, center=False):
+    srcH, srcW = img.shape[:2]
+    dstH, dstW = dstSize
+    if center:
+        y0 = int((srcH - dstH)/2)
+        x0 = int((srcW - dstW)/2)
+    else:
+        y0 = random.randrange(0, srcH - dstH)
+        x0 = random.randrange(0, srcW - dstW)
+    return img[y0:y0+dstH, x0:x0+dstW,...]
+
+def expand_chan(src):
+    channels = cv2.split(src)
+    channels.append(sum(channels)/len(channels))
+    dst = cv2.merge(channels)
     return dst
 
 
