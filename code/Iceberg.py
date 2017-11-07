@@ -423,11 +423,11 @@ class Iceberg:
 
 if __name__ == '__main__':
     iceberg = Iceberg(base_model='simple')
-    # iceberg.train_ensemble()
-    # iceberg.test_ensemble()
+    iceberg.train_ensemble()
+    iceberg.test_ensemble()
 
-    iceberg.train()
-    iceberg.test()
+    # iceberg.train()
+    # iceberg.test()
 
 
 

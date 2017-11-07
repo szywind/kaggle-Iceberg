@@ -20,6 +20,8 @@ def flip(src, flipCode):
 def random_crop(img, dstSize, center=False):
     srcH, srcW = img.shape[:2]
     dstH, dstW = dstSize
+    if srcH < dstH or srcW < dstW:
+        return cv2.resize(img, (dstW, dstH))
     if center:
         y0 = int((srcH - dstH)/2)
         x0 = int((srcW - dstW)/2)
