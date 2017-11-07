@@ -36,3 +36,7 @@ Epoch 50/500
 11.06 (v0.4)
 - add random crop data augmentation and the 3rd dummy channel
 - public LB is 0.1787 for single model and 0.1726 for ensemble model
+
+11.07 (v0.4)
+- add Batch Normalization before every conv layer, LB is 0.1697
+- add one more conv layer in each block, LB is 0.1616
