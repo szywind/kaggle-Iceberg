@@ -74,6 +74,10 @@ class Models:
             self.model.add(Conv2D(16 * 2 ** i, kernel_size=(3, 3), padding='same'))
             self.model.add(BatchNormalization())
             self.model.add(Activation('relu'))
+
+            self.model.add(Conv2D(16 * 2 ** i, kernel_size=(3, 3), padding='same'))
+            self.model.add(BatchNormalization())
+            self.model.add(Activation('relu'))
             if i < 4:
                 self.model.add(MaxPooling2D((2, 2)))
         self.model.add(GlobalMaxPooling2D())
