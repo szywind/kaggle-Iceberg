@@ -331,6 +331,8 @@ class Iceberg:
                             if flag_expand_chan:
                                 x = expand_chan(x)
                             x = train_datagen.random_transform(x)
+                            x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
+
                             x = random_crop(x, (self.height, self.width))
                             # x = transformations(x, np.random.randint(3))
                             x_batch.append(x)
@@ -376,7 +378,9 @@ class Iceberg:
                         yield x_batch, y_batch
 
             val_datagen = ImageDataGenerator(
-                zca_whitening=True
+                zca_whitening=True,
+                horizontal_flip=True,
+                vertical_flip=True
             )
             def val_generator():
                 while True:
@@ -390,6 +394,8 @@ class Iceberg:
                             if flag_expand_chan:
                                 x = expand_chan(x)
                             x = val_datagen.random_transform(x)
+                            x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
+
                             x = random_crop(x, (self.height, self.width), center=True)
                             x_batch.append(x)
                             y_batch.append(y_val[i])
@@ -438,6 +444,8 @@ class Iceberg:
             for k in range(K):
                 for i in range(nTest):
                     x = self.test_images[i]
+                    x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
+
                     if flag_expand_chan:
                         x = expand_chan(x)
                     aug_test_images[i] = random_crop(x, (self.height, self.width))
@@ -453,11 +461,11 @@ class Iceberg:
 
 if __name__ == '__main__':
     iceberg = Iceberg(base_model='simple')
-    # iceberg.train_ensemble()
-    # iceberg.test_ensemble()
+    iceberg.train_ensemble()
+    iceberg.test_ensemble()
 
-    iceberg.train()
-    iceberg.test()
+    # iceberg.train()
+    # iceberg.test()
 
 
 
