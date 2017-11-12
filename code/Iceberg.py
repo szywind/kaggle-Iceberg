@@ -118,7 +118,7 @@ class Iceberg:
                         x = train_datagen.random_transform(x)
                         # train_datagen.fit(x[np.newaxis,...])
                         # x = train_datagen.standardize(x)
-                        x = (x - np.mean(x, axis=(0,1))) / np.std(x, axis=(0,1))
+                        # x = (x - np.mean(x, axis=(0,1))) / np.std(x, axis=(0,1))
                         # x = transformations(x, np.random.randint(3))
                         x = random_crop(x, (self.height, self.width))
                         x_batch.append(x)
@@ -180,8 +180,8 @@ class Iceberg:
         val_datagen = ImageDataGenerator(
             # featurewise_center=True,
             # featurewise_std_normalization=True,
-            horizontal_flip=True,
-            vertical_flip=True
+            # horizontal_flip=True,
+            # vertical_flip=True
         )
         def val_generator():
             while True:
@@ -197,7 +197,7 @@ class Iceberg:
                         x = val_datagen.random_transform(x)
                         # val_datagen.fit(x[np.newaxis,...])
                         # x = val_datagen.standardize(x)
-                        x = (x - np.mean(x, axis=(0,1))) / np.std(x, axis=(0,1))
+                        # x = (x - np.mean(x, axis=(0,1))) / np.std(x, axis=(0,1))
 
                         x = random_crop(x, (self.height, self.width), center=True)
                         x_batch.append(x)
@@ -254,13 +254,12 @@ class Iceberg:
         for k in range(K):
             for i in range(nTest):
                 x = self.test_images[i]
-
-                # test_datagen.fit(x[np.newaxis,...])
-                # x = test_datagen.standardize(x)
-                x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
-
                 if flag_expand_chan:
                     x = expand_chan(x)
+                # test_datagen.fit(x[np.newaxis,...])
+                # x = test_datagen.standardize(x)
+                # x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
+
                 aug_test_images[i] = random_crop(x, (self.height, self.width))
                 # test_predictions = self.model.predict(self.test_images)
             test_predictions += self.model.predict(aug_test_images) / float(K)
@@ -331,7 +330,7 @@ class Iceberg:
                             if flag_expand_chan:
                                 x = expand_chan(x)
                             x = train_datagen.random_transform(x)
-                            x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
+                            # x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
 
                             x = random_crop(x, (self.height, self.width))
                             # x = transformations(x, np.random.randint(3))
@@ -379,8 +378,8 @@ class Iceberg:
 
             val_datagen = ImageDataGenerator(
                 zca_whitening=True,
-                horizontal_flip=True,
-                vertical_flip=True
+                # horizontal_flip=True,
+                # vertical_flip=True
             )
             def val_generator():
                 while True:
@@ -394,7 +393,7 @@ class Iceberg:
                             if flag_expand_chan:
                                 x = expand_chan(x)
                             x = val_datagen.random_transform(x)
-                            x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
+                            # x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
 
                             x = random_crop(x, (self.height, self.width), center=True)
                             x_batch.append(x)
@@ -444,10 +443,10 @@ class Iceberg:
             for k in range(K):
                 for i in range(nTest):
                     x = self.test_images[i]
-                    x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
-
                     if flag_expand_chan:
                         x = expand_chan(x)
+                    # x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
+
                     aug_test_images[i] = random_crop(x, (self.height, self.width))
                     # test_predictions = self.model.predict(self.test_images)
                 test_predictions += self.model.predict(aug_test_images) / float(K * self.num_folds)
@@ -461,11 +460,11 @@ class Iceberg:
 
 if __name__ == '__main__':
     iceberg = Iceberg(base_model='simple')
-    iceberg.train_ensemble()
-    iceberg.test_ensemble()
+    # iceberg.train_ensemble()
+    # iceberg.test_ensemble()
 
-    # iceberg.train()
-    # iceberg.test()
+    iceberg.train()
+    iceberg.test()
 
 
 
