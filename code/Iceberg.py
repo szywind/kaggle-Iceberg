@@ -55,7 +55,7 @@ class Iceberg:
             models.xception()
         elif self.base_model == 'simple':
             models.simple()  # TODO
-        elif self.base_model == 'simple_inception':
+        elif self.base_model == 'simple_resnet':
             models.simple_resnet()
         elif self.base_model == 'pspnet':
             models.simple_pspnet()
