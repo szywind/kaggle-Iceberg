@@ -14,7 +14,7 @@ from helpers import transformations, flip, random_crop, expand_chan
 flag_expand_chan = True
 
 class Iceberg:
-    def __init__(self, height=70, width=70, batch_size=64, max_epochs=500, base_model='simple', num_classes=2):
+    def __init__(self, height=70, width=70, batch_size=128, max_epochs=500, base_model='simple', num_classes=2):
         self.height = height
         self.width = width
         self.batch_size = batch_size
@@ -51,8 +51,14 @@ class Iceberg:
             models.resnet50()
         elif self.base_model == 'inceptionV3':
             models.inceptionV3()
+        elif self.base_model == 'xception':
+            models.xception()
         elif self.base_model == 'simple':
             models.simple()  # TODO
+        elif self.base_model == 'simple_inception':
+            models.simple_resnet()
+        elif self.base_model == 'pspnet':
+            models.simple_pspnet()
         else:
             print('Uknown base model')
             raise SystemExit
@@ -416,18 +422,18 @@ class Iceberg:
 
         # save the predictions csv file
         pred_df = self.test_df[['id']].copy()
-        pred_df['is_iceberg'] = test_predictions[:, 1]
+        pred_df['is_iceberg'] = np.clip(test_predictions[:, 1], 0, 1)
         pred_df.to_csv('../submit/predictions_ensemble.csv', index = False)
 
 
 
 if __name__ == '__main__':
-    iceberg = Iceberg(base_model='simple')
-    iceberg.train_ensemble()
-    iceberg.test_ensemble()
+    iceberg = Iceberg(base_model='xception')
+    # iceberg.train_ensemble()
+    # iceberg.test_ensemble()
 
-    # iceberg.train()
-    # iceberg.test()
+    iceberg.train()
+    iceberg.test()
 
 
 
