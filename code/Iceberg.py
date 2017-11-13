@@ -98,6 +98,8 @@ class Iceberg:
         print("# validation images: ", nVal)
 
         train_datagen = ImageDataGenerator(
+            # featurewise_center=True,
+            # featurewise_std_normalization=True,
             zca_whitening=True,
             shear_range=0.2,
             zoom_range=[1, 1.2],
@@ -117,6 +119,9 @@ class Iceberg:
                         if flag_expand_chan:
                             x = expand_chan(x)
                         x = train_datagen.random_transform(x)
+                        # train_datagen.fit(x[np.newaxis,...])
+                        # x = train_datagen.standardize(x)
+                        # x = (x - np.mean(x, axis=(0,1))) / np.std(x, axis=(0,1))
                         # x = transformations(x, np.random.randint(3))
                         x = random_crop(x, (self.height, self.width))
                         x_batch.append(x)
@@ -175,7 +180,12 @@ class Iceberg:
         #                          self.num_classes, train_datagen, lock,
         #                          batch_size=self.batch_size, shuffle=True)
 
-        val_datagen = ImageDataGenerator()
+        val_datagen = ImageDataGenerator(
+            # featurewise_center=True,
+            # featurewise_std_normalization=True,
+            # horizontal_flip=True,
+            # vertical_flip=True
+        )
         def val_generator():
             while True:
                 for start in range(0, nVal, self.batch_size):
@@ -188,6 +198,10 @@ class Iceberg:
                         if flag_expand_chan:
                             x = expand_chan(x)
                         x = val_datagen.random_transform(x)
+                        # val_datagen.fit(x[np.newaxis,...])
+                        # x = val_datagen.standardize(x)
+                        # x = (x - np.mean(x, axis=(0,1))) / np.std(x, axis=(0,1))
+
                         x = random_crop(x, (self.height, self.width), center=True)
                         x_batch.append(x)
                         y_batch.append(y_val[i])
@@ -232,11 +246,23 @@ class Iceberg:
         K = 5
         print("# test images: ", nTest)
         test_predictions = 0
+
+        # test_datagen = ImageDataGenerator(
+        #     featurewise_center=True,
+        #     featurewise_std_normalization=True,
+        #     horizontal_flip=True,
+        #     vertical_flip=True
+        # )
+
         for k in range(K):
             for i in range(nTest):
                 x = self.test_images[i]
                 if flag_expand_chan:
                     x = expand_chan(x)
+                # test_datagen.fit(x[np.newaxis,...])
+                # x = test_datagen.standardize(x)
+                # x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
+
                 aug_test_images[i] = random_crop(x, (self.height, self.width))
                 # test_predictions = self.model.predict(self.test_images)
             test_predictions += self.model.predict(aug_test_images) / float(K)
@@ -307,6 +333,8 @@ class Iceberg:
                             if flag_expand_chan:
                                 x = expand_chan(x)
                             x = train_datagen.random_transform(x)
+                            # x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
+
                             x = random_crop(x, (self.height, self.width))
                             # x = transformations(x, np.random.randint(3))
                             x_batch.append(x)
@@ -352,7 +380,9 @@ class Iceberg:
                         yield x_batch, y_batch
 
             val_datagen = ImageDataGenerator(
-                zca_whitening=True
+                zca_whitening=True,
+                # horizontal_flip=True,
+                # vertical_flip=True
             )
             def val_generator():
                 while True:
@@ -366,6 +396,8 @@ class Iceberg:
                             if flag_expand_chan:
                                 x = expand_chan(x)
                             x = val_datagen.random_transform(x)
+                            # x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
+
                             x = random_crop(x, (self.height, self.width), center=True)
                             x_batch.append(x)
                             y_batch.append(y_val[i])
@@ -416,6 +448,8 @@ class Iceberg:
                     x = self.test_images[i]
                     if flag_expand_chan:
                         x = expand_chan(x)
+                    # x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
+
                     aug_test_images[i] = random_crop(x, (self.height, self.width))
                     # test_predictions = self.model.predict(self.test_images)
                 test_predictions += self.model.predict(aug_test_images) / float(K * self.num_folds)
@@ -428,7 +462,7 @@ class Iceberg:
 
 
 if __name__ == '__main__':
-    iceberg = Iceberg(base_model='xception')
+    iceberg = Iceberg(base_model='simple')
     # iceberg.train_ensemble()
     # iceberg.test_ensemble()
 
