@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from keras.utils.np_utils import to_categorical
 from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
-from keras.optimizers import RMSprop, Adam
+from keras.optimizers import RMSprop, Adam, SGD
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 from sklearn.model_selection import KFold, StratifiedKFold
 
@@ -65,8 +65,9 @@ class Iceberg:
 
         # models.compile(optimizer=RMSprop(lr=1e-3))
 
-        models.compile(optimizer=Adam())
-
+        # models.compile(optimizer=Adam()) # TODO
+        sgd = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
+        models.compile(optimizer=sgd)
         self.model = models.get_model()
 
     def train(self):  # split the train dataset 50%-50% (train-validation)
@@ -103,8 +104,8 @@ class Iceberg:
             zca_whitening=True,
             shear_range=0.2,
             zoom_range=[1, 1.2],
-            horizontal_flip=True,
-            vertical_flip=True
+            # horizontal_flip=True,
+            # vertical_flip=True
         )
 
         def train_generator():
@@ -291,6 +292,7 @@ class Iceberg:
             y_val = train_labels[val_index]
 
             kfold_weights_path = '../weights/best_weights_{}_{}.hdf5'.format(self.base_model, fold_id)
+            self.model.load_weights(kfold_weights_path)
             fold_id += 1
 
             print('Train', X_train.shape, y_train.shape)
@@ -314,11 +316,11 @@ class Iceberg:
             print("# validation images: ", nVal)
 
             train_datagen = ImageDataGenerator(
-                zca_whitening=True,
-                shear_range=0.2,
-                zoom_range=[1, 1.2],
-                horizontal_flip=True,
-                vertical_flip=True
+                # zca_whitening=True,
+                # shear_range=0.2,
+                # zoom_range=[1, 1.2],
+                # horizontal_flip=True,
+                # vertical_flip=True
             )
 
             def train_generator():
@@ -423,7 +425,7 @@ class Iceberg:
         K = 5
         print(self.test_images.shape)
         print("# test images: ", nTest)
-        test_predictions = 0
+        self.test_predictions = 0
         for fold_id in range(self.num_folds):
             kfold_weights_path = '../weights/best_weights_{}_{}.hdf5'.format(self.base_model, fold_id)
             self.model.load_weights(kfold_weights_path)
@@ -452,22 +454,38 @@ class Iceberg:
 
                     aug_test_images[i] = random_crop(x, (self.height, self.width))
                     # test_predictions = self.model.predict(self.test_images)
-                test_predictions += self.model.predict(aug_test_images) / float(K * self.num_folds)
+                self.test_predictions += self.model.predict(aug_test_images) / float(K * self.num_folds)
 
         # save the predictions csv file
         pred_df = self.test_df[['id']].copy()
-        pred_df['is_iceberg'] = np.clip(test_predictions[:, 1], 0, 1)
-        pred_df.to_csv('../submit/predictions_ensemble.csv', index = False)
+        pred_df['is_iceberg'] = np.clip(self.test_predictions[:, 1], 0, 1)
+        pred_df.to_csv('../submit/predictions_ensemble_{}.csv'.format(self.base_model), index = False)
 
 
 
 if __name__ == '__main__':
-    iceberg = Iceberg(base_model='simple')
+    # iceberg = Iceberg(base_model='vgg16')
     # iceberg.train_ensemble()
     # iceberg.test_ensemble()
 
-    iceberg.train()
-    iceberg.test()
+    # iceberg.train()
+    # iceberg.test()
 
+    pred = 0
+
+    models = ['vgg16', 'resnet50', 'inceptionV3', 'simple', 'simple_resnet', 'pspnet']
+    # models = ['vgg16', 'resnet50', 'inceptionV3', 'simple', 'pspnet']
+
+    for base_model in models:
+        iceberg = Iceberg(base_model=base_model)
+        # iceberg.train_ensemble()
+        iceberg.test_ensemble()
+
+        pred += iceberg.test_predictions / float(len(models))
+
+
+    pred_df = pd.read_csv('../submit/predictions_ensemble_vgg16.csv')
+    pred_df['is_iceberg'] = np.clip(pred[:, 1], 0, 1)
+    pred_df.to_csv('../submit/predictions_ensemble_{}.csv'.format(len(models)), index=False)
 
 
