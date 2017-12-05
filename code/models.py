@@ -24,9 +24,9 @@ class Models:
         if not self.input_shape[-1] == 3:
             self.model.add(Conv2D(3, kernel_size=(1,1), padding='same'))
 
-        import myvgg16
-        base_model = myvgg16.VGG16(include_top=False, weights=None,
-                           input_shape=self.input_shape)
+        import myVgg16
+        base_model = myVgg16.VGG16(include_top=False, weights=None,
+                                   input_shape=self.input_shape)
 
         self.model.add(base_model)
         self.model.add(Flatten())
@@ -42,9 +42,9 @@ class Models:
 
     def resnet50(self):
         self.model.add(BatchNormalization(input_shape=self.input_shape))
-        import myresnet50
-        base_model = myresnet50.ResNet50(include_top=False, weights=None,
-                              input_shape=self.input_shape)
+        import myResnet50
+        base_model = myResnet50.ResNet50(include_top=False, weights=None,
+                                         input_shape=self.input_shape)
 
         self.model.add(base_model)
         self.model.add(Flatten())
@@ -52,9 +52,9 @@ class Models:
 
     def inceptionV3(self):
         self.model.add(BatchNormalization(input_shape=self.input_shape))
-        import myinception
-        base_model = myinception.InceptionV3(include_top=False, weights=None,
-                                 input_shape=self.input_shape)
+        import myInception
+        base_model = myInception.InceptionV3(include_top=False, weights=None,
+                                             input_shape=self.input_shape)
 
         self.model.add(base_model)
         self.model.add(GlobalAveragePooling2D())
@@ -62,9 +62,9 @@ class Models:
 
     def xception(self):
         self.model.add(BatchNormalization(input_shape=self.input_shape))
-        import myxception
-        base_model = myxception.Xception(include_top=False, weights=None,
-                                 input_shape=self.input_shape)
+        import myXception
+        base_model = myXception.Xception(include_top=False, weights=None,
+                                         input_shape=self.input_shape)
         self.model.add(base_model)
         self.model.add(GlobalAveragePooling2D())
         self.model.add(Dense(self.classes, activation='softmax'))
