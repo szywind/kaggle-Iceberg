@@ -41,9 +41,10 @@ Epoch 50/500
 - add Batch Normalization before every conv layer, LB is 0.1697
 - add one more conv layer in each block, LB is 0.1616
 
-11.10 (v0.5)
-// TODO
-```
-Epoch 29/500
-11s - loss: 0.0936 - acc: 0.9604 - focus_loss: 0.0409 - val_loss: 0.1509 - val_acc: 0.9327 - val_focus_loss: 0.0898
-```
+12.05 (v0.6)
+- add more network architecture
+- add model ensembling across different network structures, LB is 0.1548
+
+
+[TODO](https://www.kaggle.com/dongxu027/explore-stacking-lb-0-1463)
+
