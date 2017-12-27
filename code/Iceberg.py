@@ -14,7 +14,7 @@ from helpers import transformations, flip, random_crop, expand_chan
 flag_expand_chan = True
 
 class Iceberg:
-    def __init__(self, height=70, width=70, batch_size=128, max_epochs=500, base_model='simple', num_classes=2):
+    def __init__(self, height=70, width=70, batch_size=512, max_epochs=500, base_model='simple', num_classes=2):
         self.height = height
         self.width = width
         self.batch_size = batch_size
@@ -473,19 +473,19 @@ if __name__ == '__main__':
 
     pred = 0
 
-    models = ['vgg16', 'resnet50', 'inceptionV3', 'simple', 'simple_resnet', 'pspnet']
+    models = ['vgg16', 'resnet50', 'inceptionV3', 'simple', 'simple_resnet', 'pspnet', 'xception']
     # models = ['vgg16', 'resnet50', 'inceptionV3', 'simple', 'pspnet']
 
     for base_model in models:
         iceberg = Iceberg(base_model=base_model)
-        # iceberg.train_ensemble()
+        iceberg.train_ensemble()
         iceberg.test_ensemble()
 
         pred += iceberg.test_predictions / float(len(models))
 
 
-    pred_df = pd.read_csv('../submit/predictions_ensemble_vgg16.csv')
-    pred_df['is_iceberg'] = np.clip(pred[:, 1], 0, 1)
-    pred_df.to_csv('../submit/predictions_ensemble_{}.csv'.format(len(models)), index=False)
+    # pred_df = pd.read_csv('../submit/predictions_ensemble_vgg16.csv')
+    # pred_df['is_iceberg'] = np.clip(pred[:, 1], 0, 1)
+    # pred_df.to_csv('../submit/predictions_ensemble_{}.csv'.format(len(models)), index=False)
 
 
