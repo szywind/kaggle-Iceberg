@@ -1,121 +1,131 @@
-from keras.models import Sequential
-from keras.applications.vgg16 import VGG16
-from keras.applications.vgg19 import VGG19
-from keras.applications.resnet50 import ResNet50
-from keras.applications.inception_v3 import InceptionV3
-from keras.applications.xception import Xception
-from keras.regularizers import L1L2
-
-from keras.layers import Flatten, Dense, GlobalAveragePooling2D, BatchNormalization, Conv2D, MaxPooling2D, \
-    GlobalMaxPooling2D, Dropout, Input, Activation
-from keras.layers.merge import add
+from keras.applications import VGG16, ResNet50, InceptionResNetV2
+from keras.layers import Dense, GlobalAveragePooling2D, GlobalMaxPooling2D, BatchNormalization, Conv2D, MaxPooling2D, \
+    Dropout, Input, Activation, Flatten
+from keras.layers.merge import add, concatenate
 from keras.models import Model
 
 from loss import focus_loss
+import myResnet50, myVgg16, myXception, myInception, myDensenet, myInceptionResnet
+from pspnet import pspnet2
+from constant import *
+
 
 class Models:
-    def __init__(self, input_shape, classes):
+    def __init__(self, input_shape, classes, aux_input_shape):
         self.input_shape = input_shape
         self.classes = classes
-        self.model = Sequential()
+        self.aux_input_shape = aux_input_shape
+
+    def model_factory(self, base_model, mode=2, dropout_rate=0.5):
+        input = Input(shape=self.input_shape, name='main_input')
+        # aux_input = Input(shape=self.aux_input_shape, name='aux_input')
+
+        x = BatchNormalization()(input)
+        if not self.input_shape[-1] == 3:
+            x = Conv2D(3, kernel_size=(1, 1), padding='same', activation='relu')(x)
+        x = base_model(x)
+        if mode == 0:
+            x = Flatten()(x)
+
+        # x = Dropout(dropout_rate)(x)
+        # x = Dense(16, activation='relu')(x)
+
+        # aux_input_1 = Dense(1)(aux_input)
+        # x = concatenate([x, aux_input_1])
+        # x = Dense(16, activation='relu')(x)
+        # x = Dropout(dropout_rate)(x)
+        # aux_input_2 = Dense(1)(aux_input)
+        # x = concatenate([x, aux_input_2])
+
+        x = Dense(self.classes, activation='softmax')(x)
+        # self.model = Model(inputs=[input, aux_input], outputs=x)
+        self.model = Model(inputs=[input], outputs=x)
+
 
     def vgg16(self):
-        self.model.add(BatchNormalization(input_shape=self.input_shape))
-        if not self.input_shape[-1] == 3:
-            self.model.add(Conv2D(3, kernel_size=(1,1), padding='same'))
+        base_model = myVgg16.VGG16(include_top=False, weights=None, input_shape=self.input_shape, pooling='avg')
 
-        import myVgg16
-        base_model = myVgg16.VGG16(include_top=False, weights=None,
-                                   input_shape=self.input_shape)
+        # base_model = VGG16(include_top=False, weights=None, input_shape=self.input_shape, pooling='avg')
+        # base_model.load_weights('../imagenet_models/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5')
+        # base_model.trainable = True
+        self.model_factory(base_model)
 
-        self.model.add(base_model)
-        self.model.add(Flatten())
-        self.model.add(Dense(self.classes, activation='softmax'))
-
-    def vgg19(self):
-        base_model = VGG19(include_top=False, weights='imagenet',
-                           input_shape=self.input_shape)
-
-        self.model.add(base_model)
-        self.model.add(Flatten())
-        self.model.add(Dense(self.classes, activation='softmax'))
 
     def resnet50(self):
-        self.model.add(BatchNormalization(input_shape=self.input_shape))
-        import myResnet50
-        base_model = myResnet50.ResNet50(include_top=False, weights=None,
-                                         input_shape=self.input_shape)
+        base_model = myResnet50.ResNet50(include_top=False, weights=None, input_shape=self.input_shape, pooling='avg')
 
-        self.model.add(base_model)
-        self.model.add(Flatten())
-        self.model.add(Dense(self.classes, activation='softmax'))
+        # base_model = ResNet50(include_top=False, weights=None, input_shape=self.input_shape, pooling='avg')
+        # base_model.load_weights('../imagenet_models/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5')
+        # base_model.trainable = True
+        self.model_factory(base_model)
+
+    def inceptionResnetV2(self):
+        base_model = InceptionResNetV2(include_top=False, weights=None, input_shape=self.input_shape, pooling='avg')
+        # base_model.load_weights('../imagenet_models/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5')
+        # base_model.trainable = True
+        self.model_factory(base_model)
 
     def inceptionV3(self):
-        self.model.add(BatchNormalization(input_shape=self.input_shape))
-        import myInception
-        base_model = myInception.InceptionV3(include_top=False, weights=None,
-                                             input_shape=self.input_shape)
-
-        self.model.add(base_model)
-        self.model.add(GlobalAveragePooling2D())
-        self.model.add(Dense(self.classes, activation='softmax'))
+        base_model = myInception.InceptionV3(include_top=False, weights=None, input_shape=self.input_shape, pooling='avg')
+        self.model_factory(base_model)
 
     def xception(self):
-        self.model.add(BatchNormalization(input_shape=self.input_shape))
-        import myXception
-        base_model = myXception.Xception(include_top=False, weights=None,
-                                         input_shape=self.input_shape)
-        self.model.add(base_model)
-        self.model.add(GlobalAveragePooling2D())
-        self.model.add(Dense(self.classes, activation='softmax'))
+        base_model = myXception.Xception(include_top=False, weights=None, input_shape=self.input_shape, pooling='avg')
+        self.model_factory(base_model)
 
     def simple(self):
-        # simple CNN
-        self.model = Sequential()
-        self.model.add(BatchNormalization(input_shape=self.input_shape))
-        for i in range(4):
-            self.model.add(Conv2D(16 * 2 ** i, kernel_size=(3, 3), padding='same'))
-            self.model.add(BatchNormalization())
-            self.model.add(Activation('relu'))
+        def mySimple(input_shape):
+            # simple CNN
+            input = Input(shape=input_shape)
+            x = input
+            for i in range(4):
+                x = Conv2D(16 * 2 ** i, kernel_size=(3, 3), padding='same')(x)
+                x = BatchNormalization()(x)
+                x = Activation('relu')(x)
 
-            self.model.add(Conv2D(16 * 2 ** i, kernel_size=(3, 3), padding='same'))
-            self.model.add(BatchNormalization())
-            self.model.add(Activation('relu'))
+                x = Conv2D(16 * 2 ** i, kernel_size=(3, 3), padding='same')(x)
+                x = BatchNormalization()(x)
+                x = Activation('relu')(x)
 
-            if i < 4:
-                self.model.add(MaxPooling2D((2, 2)))
-        self.model.add(GlobalMaxPooling2D())
-        self.model.add(Dropout(0.5))
-        self.model.add(Dense(16))
-        self.model.add(Dense(2, activation='softmax'))
+                x = MaxPooling2D(2, 2)(x)
+
+            # x = GlobalAveragePooling2D()(x)
+            x = GlobalMaxPooling2D()(x)
+
+            return Model(input, x)
+
+        base_model = mySimple(input_shape=self.input_shape)
+        self.model_factory(base_model, mode=2)
 
     def simple_resnet(self):
-        inputs = Input(shape=self.input_shape)
-        x = BatchNormalization()(inputs)
-        for i in range(3):
-            x = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same')(x)
-            x = BatchNormalization()(x)
-            x = Activation(activation='relu')(x)
-            z = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same')(x)
-            z = BatchNormalization()(z)
-            z = Activation(activation='relu')(z)
-            z = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same')(z)
-            z = BatchNormalization()(z)
-            z = add([x, z])
-            z = Activation('relu')(z)
-            x = MaxPooling2D((2,2))(z)
-        x = Flatten()(x)
-        x = Dropout(0.5)(x)
-        x = Dense(2, activation='softmax')(x)
-        self.model = Model(inputs=inputs, outputs=x)
+        def mySimpleResnet(input_shape):
+            input = Input(shape=input_shape)
+            x = input
+            for i in range(3):
+                x = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same')(x)
+                x = BatchNormalization()(x)
+                x = Activation(activation='relu')(x)
+                z = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same')(x)
+                z = BatchNormalization()(z)
+                z = Activation(activation='relu')(z)
+                z = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same')(z)
+                z = BatchNormalization()(z)
+                z = add([x, z])
+                z = Activation('relu')(z)
+
+                x = MaxPooling2D((2, 2))(z)
+
+            # x = GlobalAveragePooling2D()(x)
+            x = GlobalMaxPooling2D()(x)
+
+            return Model(input, x)
+
+        base_model = mySimpleResnet(input_shape=self.input_shape)
+        self.model_factory(base_model, mode=2)
 
     def simple_pspnet(self):
-        from pspnet import pspnet2
         base_model = pspnet2(input_shape=self.input_shape)
-
-        self.model.add(base_model)
-        self.model.add(Flatten())
-        self.model.add(Dense(self.classes, activation='softmax'))
+        self.model_factory(base_model)
 
     def compile(self, optimizer):
         print(self.model.summary())

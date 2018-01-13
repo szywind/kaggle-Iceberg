@@ -48,3 +48,5 @@ Epoch 50/500
 
 [TODO](https://www.kaggle.com/dongxu027/explore-stacking-lb-0-1463)
 
+- stacking w/ SVM or KNN or ...
+- atrous conv to capture global context

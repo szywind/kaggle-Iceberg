@@ -194,6 +194,8 @@ def ResNet50(include_top=True, weights='imagenet',
     x = conv_block(x, 3, [8, 8, 32], stage=2, block='a', strides=(1, 1), trainable=trainable)
     x = identity_block(x, 3, [8, 8, 32], stage=2, block='b', trainable=trainable)
     x = identity_block(x, 3, [8, 8, 32], stage=2, block='c', trainable=trainable)
+    x = identity_block(x, 3, [8, 8, 32], stage=2, block='cc', trainable=trainable)
+
 
     x = conv_block(x, 3, [16, 16, 64], stage=3, block='a', trainable=trainable)
     x = identity_block(x, 3, [16, 16, 64], stage=3, block='b', trainable=trainable)

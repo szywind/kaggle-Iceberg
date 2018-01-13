@@ -120,12 +120,13 @@ def VGG16(include_top=True, weights='imagenet',
     # x = Conv2D(512//factor, (3, 3), activation='relu', padding='same', name='block4_conv2')(x)
     # x = Conv2D(512//factor, (3, 3), activation='relu', padding='same', name='block4_conv3')(x)
     # x = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(x)
-
+    #
     # # Block 5
-    # x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv1')(x)
-    # x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv2')(x)
-    # x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3')(x)
+    # x = Conv2D(512//factor, (3, 3), activation='relu', padding='same', name='block5_conv1')(x)
+    # x = Conv2D(512//factor, (3, 3), activation='relu', padding='same', name='block5_conv2')(x)
+    # x = Conv2D(512//factor, (3, 3), activation='relu', padding='same', name='block5_conv3')(x)
     # x = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(x)
+
 
     if include_top:
         # Classification block
