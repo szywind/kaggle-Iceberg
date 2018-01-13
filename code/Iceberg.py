@@ -57,9 +57,9 @@ class Iceberg:
 
         # models.compile(optimizer=RMSprop(lr=1e-3))
 
-        models.compile(optimizer=Adam(lr=1e-3))
-        # sgd = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
-        # models.compile(optimizer=sgd)
+        # models.compile(optimizer=Adam(lr=1e-3))
+        sgd = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
+        models.compile(optimizer=sgd)
         self.model = models.get_model()
         self.model.save_weights('../weights/init.hdf5')
 
