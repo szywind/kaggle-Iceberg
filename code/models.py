@@ -7,8 +7,8 @@ from keras.applications.xception import Xception
 from keras.regularizers import L1L2
 
 from keras.layers import Flatten, Dense, GlobalAveragePooling2D, BatchNormalization, Conv2D, MaxPooling2D, \
-    GlobalMaxPooling2D, Dropout, Input, Activation
-from keras.layers.merge import add
+    GlobalMaxPooling2D, Dropout, Input, Activation, UpSampling2D, AveragePooling2D
+from keras.layers.merge import add, concatenate
 from keras.models import Model
 
 from loss import focus_loss
@@ -116,6 +116,60 @@ class Models:
         self.model.add(base_model)
         self.model.add(Flatten())
         self.model.add(Dense(self.classes, activation='softmax'))
+
+    def simple_cascade_atrous(self):
+        inputs = Input(shape=self.input_shape)
+        x = BatchNormalization()(inputs)
+        for i in range(2):
+            x = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same')(x)
+            x = BatchNormalization()(x)
+            x = Activation(activation='relu')(x)
+            x = MaxPooling2D((2,2))(x)
+
+        for i in range(3):
+            x = Conv2D(32, kernel_size=(3, 3), dilation_rate=2**(i+1), padding='same')(x)
+        x = Flatten()(x)
+        x = Dropout(0.5)(x)
+        x = Dense(2, activation='softmax')(x)
+        self.model = Model(inputs=inputs, outputs=x)
+
+    def simple_parallel_atrous(self):
+        inputs = Input(shape=self.input_shape)
+        x = BatchNormalization()(inputs)
+        for i in range(2):
+            x = Conv2D(8 * 2 ** i, kernel_size=(3, 3), padding='same')(x)
+            x = BatchNormalization()(x)
+            x = Activation(activation='relu')(x)
+            x = MaxPooling2D((2,2))(x)
+
+        # ASPP
+        x1 = Conv2D(16, kernel_size=(1, 1), padding='same')(x)
+        x1 = BatchNormalization()(x1)
+        x1 = Activation(activation='relu')(x1)
+
+        x2 = Conv2D(16, kernel_size=(3, 3), dilation_rate=2, padding='same')(x)
+        x2 = BatchNormalization()(x2)
+        x2 = Activation(activation='relu')(x2)
+
+        x3 = Conv2D(16, kernel_size=(3, 3), dilation_rate=3, padding='same')(x)
+        x3 = BatchNormalization()(x3)
+        x3 = Activation(activation='relu')(x3)
+
+        x4 = Conv2D(16, kernel_size=(3, 3), dilation_rate=6, padding='same')(x)
+        x4 = BatchNormalization()(x4)
+        x4 = Activation(activation='relu')(x4)
+
+        x5 = AveragePooling2D(pool_size=(17, 17))(x)
+        x5 = UpSampling2D(size=(17, 17))(x5)
+
+        x = concatenate([x1, x2, x3, x4, x5])
+        x = Conv2D(32, kernel_size=(1, 1), padding='same')(x)
+        x = BatchNormalization()(x)
+        x = Activation(activation='relu')(x)
+        x = Flatten()(x)
+        x = Dropout(0.5)(x)
+        x = Dense(2, activation='softmax')(x)
+        self.model = Model(inputs=inputs, outputs=x)
 
     def compile(self, optimizer):
         print(self.model.summary())

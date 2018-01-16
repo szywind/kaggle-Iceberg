@@ -9,7 +9,9 @@ from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_a
 from sklearn.model_selection import KFold, StratifiedKFold
 
 from models import Models
-from helpers import transformations, flip, random_crop, expand_chan
+from helpers import random_rotation, flip, random_crop, expand_chan
+from keras import backend as K
+from keras.losses import binary_crossentropy
 
 flag_expand_chan = True
 
@@ -59,6 +61,10 @@ class Iceberg:
             models.simple_resnet()
         elif self.base_model == 'pspnet':
             models.simple_pspnet()
+        elif self.base_model == 'simple_cascade_atrous':
+            models.simple_cascade_atrous()
+        elif self.base_model == 'simple_parallel_atrous':
+            models.simple_parallel_atrous()
         else:
             print('Uknown base model')
             raise SystemExit
@@ -284,6 +290,7 @@ class Iceberg:
         # kf = StratifiedKFold(train_labels, n_folds=self.num_folds, shuffle=True, random_state=1)
         kf = StratifiedKFold(n_splits=self.num_folds, shuffle=True, random_state=1)
 
+        loss = 0.0
         fold_id = 0
         for train_index, val_index in kf.split(self.train_images, train_labels[:,1]):
             X_train = self.train_images[train_index]
@@ -292,7 +299,11 @@ class Iceberg:
             y_val = train_labels[val_index]
 
             kfold_weights_path = '../weights/best_weights_{}_{}.hdf5'.format(self.base_model, fold_id)
-            self.model.load_weights(kfold_weights_path)
+            try:
+                self.model.load_weights(kfold_weights_path)
+            except:
+                pass
+            K.set_value(self.model.optimizer.lr, 1e-3)
             fold_id += 1
 
             print('Train', X_train.shape, y_train.shape)
@@ -318,8 +329,8 @@ class Iceberg:
             train_datagen = ImageDataGenerator(
                 # zca_whitening=True,
                 # shear_range=0.2,
-                # zoom_range=[1, 1.2],
-                # horizontal_flip=True,
+                zoom_range=[1, 1.2],
+                horizontal_flip=True,
                 # vertical_flip=True
             )
 
@@ -418,6 +429,20 @@ class Iceberg:
             )
 
 
+            # compute val_loss
+            self.model.load_weights(kfold_weights_path)
+            y_pred = self.model.predict_generator(
+                generator=val_generator(),
+                steps=np.ceil(nVal / float(self.batch_size))
+            )
+
+            y_pred = K.variable(y_pred)
+            y_val = K.variable(y_val)
+            loss_i = K.eval(K.mean(binary_crossentropy(y_val, y_pred))) / float(self.num_folds)
+            print("loss i: ", loss_i)
+            loss += loss_i
+        print("loss: ", loss)
+
     def test_ensemble(self):
         test_array_shape = self.test_images.shape  # (8424, 75, 75, 2)
         preds = 0
@@ -473,19 +498,19 @@ if __name__ == '__main__':
 
     pred = 0
 
-    models = ['vgg16', 'resnet50', 'inceptionV3', 'simple', 'simple_resnet', 'pspnet']
+    models = ['vgg16', 'resnet50', 'inceptionV3', 'simple', 'simple_resnet', 'pspnet', 'xception', 'simple_cascade_atrous', 'simple_parallel_atrous']
     # models = ['vgg16', 'resnet50', 'inceptionV3', 'simple', 'pspnet']
-
+    models = ['vgg16']
     for base_model in models:
         iceberg = Iceberg(base_model=base_model)
-        # iceberg.train_ensemble()
+        iceberg.train_ensemble()
         iceberg.test_ensemble()
 
         pred += iceberg.test_predictions / float(len(models))
 
 
-    pred_df = pd.read_csv('../submit/predictions_ensemble_vgg16.csv')
-    pred_df['is_iceberg'] = np.clip(pred[:, 1], 0, 1)
-    pred_df.to_csv('../submit/predictions_ensemble_{}.csv'.format(len(models)), index=False)
+    # pred_df = pd.read_csv('../submit/predictions_ensemble_vgg16.csv')
+    # pred_df['is_iceberg'] = np.clip(pred[:, 1], 0, 1)
+    # pred_df.to_csv('../submit/predictions_ensemble_{}.csv'.format(len(models)), index=False)
 
 

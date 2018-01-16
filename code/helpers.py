@@ -1,8 +1,10 @@
 import cv2, imutils
 import numpy as np
 import random
+import pandas as pd
+from constant import *
 
-def transformations(src, choice):
+def random_rotation(src, choice):
     if choice == 0:
         # clockwise rotate 90
         dst = cv2.rotate(src, rotateCode=cv2.ROTATE_90_CLOCKWISE)
@@ -14,14 +16,18 @@ def transformations(src, choice):
         dst = cv2.rotate(src, rotateCode=cv2.ROTATE_180)
     return dst
 
+
 def flip(src, flipCode):
     return cv2.flip(src, flipCode=flipCode)
 
 def random_crop(img, dstSize, center=False):
     srcH, srcW = img.shape[:2]
     dstH, dstW = dstSize
+    if srcH == dstH and srcW == dstW:
+        return img
     if srcH < dstH or srcW < dstW:
-        return cv2.resize(img, (dstW, dstH))
+        img = cv2.resize(img, (IMAGE_WIDTH, IMAGE_HEIGHT))
+        return random_crop(img, dstSize, center)
     if center:
         y0 = int((srcH - dstH)/2)
         x0 = int((srcW - dstW)/2)
@@ -29,6 +35,18 @@ def random_crop(img, dstSize, center=False):
         y0 = random.randrange(0, srcH - dstH)
         x0 = random.randrange(0, srcW - dstW)
     return img[y0:y0+dstH, x0:x0+dstW,...]
+
+def fixed_crop(img, dstSize, choice):
+    srcH, srcW = img.shape[:2]
+    dstH, dstW = dstSize
+    if srcH <= dstH or srcW <= dstW:
+        return cv2.resize(img, (dstW, dstH))
+    x = [0, int((srcW - dstW)/2), srcW - dstW]
+    y = [0, int((srcH - dstH)/2), srcH - dstH]
+
+    x0 = x[choice // 3]
+    y0 = y[choice % 3]
+    return img[y0: y0 + dstH, x0: x0 + dstW, ...]
 
 def expand_chan(src):
     channels = cv2.split(src)
@@ -71,3 +89,19 @@ def randomShiftScaleRotate(image,
 
 
     return image
+
+
+
+
+def load_and_format(in_path, screening=True):
+    out_df = pd.read_json(in_path)
+    if screening:
+        # screen out sample with 'na' inc_angle
+        out_df = out_df[out_df.inc_angle != 'na']
+        inc_angles = (np.stack(out_df.inc_angle) - out_df.inc_angle.min()) / (out_df.inc_angle.max() - out_df.inc_angle.min())
+    else:
+        inc_angles = np.stack(out_df.inc_angle)
+    out_images = out_df.apply(lambda c_row: [np.stack([c_row['band_1'],c_row['band_2']], -1).reshape((75,75,2))],1)
+    out_images = np.stack(out_images).squeeze()
+
+    return out_df, list(zip(out_images, inc_angles))
