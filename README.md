@@ -45,8 +45,9 @@ Epoch 50/500
 - add more network architecture
 - add model ensembling across different network structures, LB is 0.1548
 
+01.15 (v0.8)
+- use model ensembling as [this post](https://www.kaggle.com/dongxu027/explore-stacking-lb-0-1463) to reach LB 0.1429
+- add cascaded atrous and parallel atrous convolutional network to boost LB to 0.1426
 
-[TODO](https://www.kaggle.com/dongxu027/explore-stacking-lb-0-1463)
-
+# TODO
 - stacking w/ SVM or KNN or ...
-- atrous conv to capture global context
