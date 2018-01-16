@@ -78,7 +78,7 @@ def InceptionV3(include_top=True,
                 input_shape=None,
                 pooling=None,
                 classes=1000,
-                factor=4):
+                factor=8):
 
     """Instantiates the Inception v3 architecture.
 

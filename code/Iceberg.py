@@ -9,7 +9,7 @@ from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_a
 from sklearn.model_selection import KFold, StratifiedKFold
 
 from models import Models
-from helpers import transformations, flip, random_crop, expand_chan
+from helpers import random_rotation, flip, random_crop, expand_chan
 from keras import backend as K
 from keras.losses import binary_crossentropy
 
@@ -303,7 +303,7 @@ class Iceberg:
                 self.model.load_weights(kfold_weights_path)
             except:
                 pass
-
+            K.set_value(self.model.optimizer.lr, 1e-3)
             fold_id += 1
 
             print('Train', X_train.shape, y_train.shape)
@@ -500,7 +500,7 @@ if __name__ == '__main__':
 
     models = ['vgg16', 'resnet50', 'inceptionV3', 'simple', 'simple_resnet', 'pspnet', 'xception', 'simple_cascade_atrous', 'simple_parallel_atrous']
     # models = ['vgg16', 'resnet50', 'inceptionV3', 'simple', 'pspnet']
-    models = ['simple_parallel_atrous']
+    models = ['vgg16']
     for base_model in models:
         iceberg = Iceberg(base_model=base_model)
         iceberg.train_ensemble()

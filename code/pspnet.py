@@ -1,6 +1,6 @@
 from keras.models import Model
-from keras.layers import Input, ZeroPadding2D, Conv2D, MaxPooling2D, AveragePooling2D, \
-    BatchNormalization, Activation, UpSampling2D, GlobalAveragePooling2D, Flatten
+from keras.layers import Input, concatenate, ZeroPadding2D, Conv2D, MaxPooling2D, AveragePooling2D, \
+    BatchNormalization, Activation, UpSampling2D
 from keras.initializers import he_uniform
 from keras.layers.merge import add, Concatenate
 from keras.layers.core import Dropout
@@ -180,8 +180,7 @@ def pspnet2(input_shape=(473, 473, 3), num_classes=1):
 
     # x = UpSampling2D((8, 8))(x)
 
-    x = Flatten()(x)
-    # x = GlobalAveragePooling2D(x) # incurs error
+
     model = Model(inputs=inputs, outputs=x)
 
     # model.compile(optimizer=SGD(lr=0.01, momentum=0.9), loss=bce_dice_loss, metrics=[dice_loss])
