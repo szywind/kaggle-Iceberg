@@ -443,12 +443,16 @@ class Iceberg:
             loss += loss_i
         print("loss: ", loss)
 
-    def test_ensemble(self):
-        test_array_shape = self.test_images.shape  # (8424, 75, 75, 2)
+    def test_ensemble(self, is_training=False):
+        if is_training:
+            images = self.train_images
+        else:
+            images = self.test_images
+        test_array_shape = images.shape  # (8424, 75, 75, 2)
         preds = 0
-        nTest = len(self.test_images)
+        nTest = len(images)
         K = 5
-        print(self.test_images.shape)
+        print(images.shape)
         print("# test images: ", nTest)
         self.test_predictions = 0
         for fold_id in range(self.num_folds):
@@ -457,11 +461,11 @@ class Iceberg:
 
             # make predictions with TTA
 
-            # test_predictions = self.model.predict(self.test_images)
+            # test_predictions = self.model.predict(images)
             # preds += test_predictions[:, 1] / float(K*self.num_folds)
             #
             # for k in range(K-1):
-            #     aug_test_images = self.test_images
+            #     aug_test_images = images
             #     for i in range(nTest):
             #         aug_test_images[i] = transformations(aug_test_images[i], k)
             #
@@ -472,20 +476,25 @@ class Iceberg:
             aug_test_images = np.random.randn(test_array_shape[0], self.height, self.width, test_array_shape[-1] + 1*flag_expand_chan)
             for k in range(K):
                 for i in range(nTest):
-                    x = self.test_images[i]
+                    x = images[i]
                     if flag_expand_chan:
                         x = expand_chan(x)
                     # x = (x - np.mean(x, axis=(0, 1))) / np.std(x, axis=(0, 1))
 
                     aug_test_images[i] = random_crop(x, (self.height, self.width))
-                    # test_predictions = self.model.predict(self.test_images)
+                    # test_predictions = self.model.predict(images)
                 self.test_predictions += self.model.predict(aug_test_images) / float(K * self.num_folds)
 
         # save the predictions csv file
-        pred_df = self.test_df[['id']].copy()
-        pred_df['is_iceberg'] = np.clip(self.test_predictions[:, 1], 0, 1)
-        pred_df.to_csv('../submit/predictions_ensemble_{}.csv'.format(self.base_model), index = False)
-
+        if is_training:
+            pred_df = self.train_df[['id']].copy()
+            pred_df['is_iceberg'] = np.clip(self.test_predictions[:, 1], 0, 1)
+            pred_df['gt'] = self.train_df[['is_iceberg']].copy()
+            pred_df.to_csv('../features/features_ensemble_{}.csv'.format(self.base_model), index=False)
+        else:
+            pred_df = self.test_df[['id']].copy()
+            pred_df['is_iceberg'] = np.clip(self.test_predictions[:, 1], 0, 1)
+            pred_df.to_csv('../submit/predictions_ensemble_{}.csv'.format(self.base_model), index=False)
 
 
 if __name__ == '__main__':
@@ -500,11 +509,12 @@ if __name__ == '__main__':
 
     models = ['vgg16', 'resnet50', 'inceptionV3', 'simple', 'simple_resnet', 'pspnet', 'xception', 'simple_cascade_atrous', 'simple_parallel_atrous']
     # models = ['vgg16', 'resnet50', 'inceptionV3', 'simple', 'pspnet']
-    models = ['vgg16']
+    # models = ['vgg16']
     for base_model in models:
         iceberg = Iceberg(base_model=base_model)
         iceberg.train_ensemble()
         iceberg.test_ensemble()
+        iceberg.test_ensemble(is_training=True)
 
         pred += iceberg.test_predictions / float(len(models))
 
